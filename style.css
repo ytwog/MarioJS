@@ -27,10 +27,22 @@ h1 {
   display: flex;
 }
 
-.air {
-  width: 20px;
-  height: 20px;
+.block {
+  width: 5px;
+  height: 5px;
   background-color: white;
-  margin: 2px;
+  //margin: 1px;
   float: left;
+}
+
+button {
+  display: flex;
+  margin: auto;
+  margin-top: 20px;
+  width: 40%;
+  border: 0px;
+  outline: 5px solid darkorange;
+}
+button.pressed {
+  background-color: blueviolet;
 }
