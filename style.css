@@ -11,10 +11,26 @@ h1 {
 }
 
 .gameBlock {
+  padding: 15px;
   margin: auto;
   width: 90%;
   background-color: blanchedalmond;
   text-align: center;
   height: fit-content;
   outline: 5px solid darkorange;
+}
+
+.row {
+  margin: auto;
+  min-width: fit-content;
+  width: fit-content;
+  display: flex;
+}
+
+.air {
+  width: 20px;
+  height: 20px;
+  background-color: white;
+  margin: 2px;
+  float: left;
 }
