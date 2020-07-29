@@ -1,0 +1,20 @@
+h1 {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-align: center;
+}
+
+.bigBlock {
+  margin: auto;
+  width: 40%;
+  background-color: blanchedalmond;
+  outline: 5px solid darkorange;
+}
+
+.gameBlock {
+  margin: auto;
+  width: 90%;
+  background-color: blanchedalmond;
+  text-align: center;
+  height: fit-content;
+  outline: 5px solid darkorange;
+}
