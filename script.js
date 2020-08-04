@@ -181,6 +181,7 @@ let loadGameData = function(width, height) {
       pressedW = false;
     }
 
+
   let funcPressed = function(event) {
     if(event.code == 'KeyD')
       pressedD = true;
