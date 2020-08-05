@@ -3,7 +3,8 @@
   const LOGIC = {
   PLAYABLE: 0,
   WALKING: 1,
-  STATIC: 2
+  STATIC: 2,
+  MOVING: 3
 }
 
 const DIRECTIONS = {
@@ -12,10 +13,9 @@ const DIRECTIONS = {
   up: {x: 0, y: 1},
   down: {x: -1, y: -1},
 }
-
 const ACTORS = [
     {
-      name: "mario",
+      name: 'mario',
       width: 3,
       height: 5,
       sprite: [["F00", "F00", "---"],
@@ -25,15 +25,40 @@ const ACTORS = [
                ["55F", "---", "55F"]],
       logic: LOGIC.PLAYABLE
     }, {
-      name: "turtle",
+      name: 'turtle',
       width: 2,
       height: 2,
       logic: LOGIC.WALKING
+    }, 
+    {
+      name: 'brickBlock',
+      width: 3,
+      height: 3,
+      sprite: [["F55", "F55", "F55"],
+               ["F55", "F55", "F55"],
+               ["F55", "F55", "F55"]],
+      logic: LOGIC.STATIC
     }];
 
-const MODULE = {
-
-}
+const LEVEL1 = [{
+  actor: ACTORS[2],
+    posX: 6,
+    posY: 46,
+    facing: DIRECTIONS.right,
+    fall: 0
+}, {
+  actor: ACTORS[2],
+    posX: 10,
+    posY: 38,
+    facing: DIRECTIONS.right,
+    fall: 0
+}, {
+  actor: ACTORS[2],
+    posX: 16,
+    posY: 35,
+    facing: DIRECTIONS.right,
+    fall: 0
+}]
 
 let intervalId;
 
@@ -50,7 +75,6 @@ let loadBackDesign = function() {
 // Load basic game mechanics
 let loadGameData = function(width, height) {
 
-  let fall = 0;
   let actionXPlayer = 0;
   let actionYPlayer = 0;
   let moduleArr = [];
@@ -58,8 +82,9 @@ let loadGameData = function(width, height) {
     actor: ACTORS[0],
     posX: 6,
     posY: 6,
-    facing: DIRECTIONS.right
-  }];
+    facing: DIRECTIONS.right,
+    fall: 0
+  }].concat(LEVEL1);
 
   // DOM-data
   let elementGame = document.querySelectorAll("div")[1];
@@ -80,8 +105,27 @@ let loadGameData = function(width, height) {
   let bricks = [];
   // Refresh frame every second
   let updateLogic = function() {
-      let checkCollision = function(x, y) {
-        return moduleArr[x+y*width] != "DDF";
+      let checkStuck = function(x, y, object) {
+        return x <= object.posX + object.actor.width &&
+             y <= object.posY + object.actor.height &&
+             x >= object.posX && y >= object.posY;
+      }
+
+      let checkCollision = function(x1, x2, y1, y2, desiredFall, objectIndex) {
+        for(let z = 0; z < desiredFall; z++) {
+          for(let i = 0; i < objectsArr.length; i++) {
+            if(i == objectIndex) continue;
+            if(checkStuck(x1+1, y1+z, objectsArr[i]))
+              return z;
+            if(checkStuck(x1+1, y2+z, objectsArr[i]))
+              return z;
+            if(checkStuck(x2-1, y1+z, objectsArr[i]))
+              return z;
+            if(checkStuck(x2-1, y2+z, objectsArr[i]))
+              return z;
+          }
+        }
+        return desiredFall;
       }
       if(pressedD == 1)
         actionXPlayer = 1;
@@ -96,56 +140,60 @@ let loadGameData = function(width, height) {
           moduleArr[j+i*width] = "DDF";
       for(let i = 0; i < objectsArr.length; i++) {
         //PHYSICAL PROCESSING
-        let bottomY = objectsArr[i].posY + objectsArr[i].actor.height;
-        let rightX = objectsArr[i].posX + objectsArr[i].actor.width;
-        //TODO FIX COLLISION
-        let fallLeft = height - bottomY;
-        if(objectsArr[i].actor.logic == LOGIC.PLAYABLE) {
-          if(fallLeft == 0 && actionYPlayer == -1) {
-            fall = -4;
-          }
-          if(actionXPlayer == 1) {
-            let movingAllowed = true;
-            for(let iY = 0; iY < objectsArr[i].actor.height; iY++) {
-              if(checkCollision(iY, rightX)) {
-                movingAllowed = false;
-                break;
+        if(objectsArr[i].actor.logic != LOGIC.STATIC) {
+          let bottomY = objectsArr[i].posY + objectsArr[i].actor.height;
+          let rightX = objectsArr[i].posX + objectsArr[i].actor.width;
+          //TODO FIX COLLISION
+          let fallLeft = height - bottomY;
+          if(objectsArr[i].actor.logic == LOGIC.PLAYABLE) {
+            if((fallLeft == 0 || checkCollision(objectsArr[i].posX,
+                              objectsArr[i].posX+objectsArr[i].actor.width,
+                              objectsArr[i].posY,
+                              objectsArr[i].posY+objectsArr[i].actor.height,
+                              1, i) == 0) && actionYPlayer == -1 &&
+                              objectsArr[i].fall >= 0) {
+              objectsArr[i].fall = -4;
+            }
+            if(actionXPlayer == 1) {
+              let movingAllowed = true;
+              for(let iY = 0; iY < objectsArr[i].actor.height; iY++) {
+                if(checkCollision(rightX, iY)) {
+                  movingAllowed = false;
+                }
+              }
+              if(movingAllowed) {
+                objectsArr[i].posX++;
               }
             }
-            if(movingAllowed) {
-              objectsArr[i].posX++;
-            }
-          }
-          if(actionXPlayer == -1) {
-            let movingAllowed = true;
-            for(let iY = 0; iY < objectsArr[i].actor.height; iY++) {
-              if(checkCollision(rightX, iY)) {
-                movingAllowed = false;
-                break;
+            if(actionXPlayer == -1) {
+              let movingAllowed = true;
+              for(let iY = 0; iY < objectsArr[i].actor.height; iY++) {
+                if(checkCollision(rightX, iY)) {
+                  movingAllowed = false;
+                  break;
+                }
+              }
+              if(movingAllowed) {
+                objectsArr[i].posX--;
               }
             }
-            if(movingAllowed) {
-              objectsArr[i].posX--;
+          }
+          //CHECKING COLLISION AT BOTTOM
+          if(fallLeft < 1) objectsArr[i].fall = Math.min(0, objectsArr[i].fall);
+          else {
+            objectsArr[i].fall = Math.min(objectsArr[i].fall, fallLeft);
+            allowedFall = checkCollision(objectsArr[i].posX,
+                              objectsArr[i].posX+objectsArr[i].actor.width,
+                              objectsArr[i].posY,
+                              objectsArr[i].posY+objectsArr[i].actor.height,
+                              objectsArr[i].fall, i);
+            if(allowedFall < objectsArr[i].fall) {
+              objectsArr[i].fall = allowedFall;
             }
           }
+          objectsArr[i].posY += objectsArr[i].fall;
+          if(objectsArr[i].fall < 10) objectsArr[i].fall++;
         }
-        //CHECKING COLLISION AT BOTTOM
-        if(fall == 0) fall = 1;
-        if(fallLeft < 1) fall = Math.min(0, fall);
-        else {
-          fall = Math.min(fall, fallLeft);
-          for(let iFall = 0; iFall < fallLeft; iFall++) {
-            for(let iX = 0; iX < objectsArr[i].actor.width; iX++) {
-              if(checkCollision(iX, bottomY+iFall)) {
-                fall = iFall;
-                break;
-              }
-            }
-          }
-        }
-        objectsArr[i].posY += fall;
-        if(fall < 10) fall++;
-
         //PIXELATION
         for(let iY = 0; iY < objectsArr[i].actor.height; iY++) {
           for(let iX = 0; iX < objectsArr[i].actor.width; iX++) {
@@ -159,13 +207,13 @@ let loadGameData = function(width, height) {
   }
 
   let funcRefresh = function() {
-      updateLogic();
-      let elementModules = document.querySelectorAll(".block");
-      for(let i = 0; i < height; i++) {
-        for(let j = 0; j < width; j++) {
-          elementModules[j+i*width].style.backgroundColor = `#${moduleArr[j+i*width]}`;
-        }
+    updateLogic();
+    let elementModules = document.querySelectorAll(".block");
+    for(let i = 0; i < height; i++) {
+      for(let j = 0; j < width; j++) {
+        elementModules[j+i*width].style.backgroundColor = `#${moduleArr[j+i*width]}`;
       }
+    }
     // Reset all actions  
     actionXPlayer = 0;
     actionYPlayer = 0;
