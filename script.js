@@ -18,6 +18,7 @@ const ACTORS = [
       name: 'mario',
       width: 3,
       height: 5,
+      climbable: false,
       sprite: [["F00", "F00", "---"],
                ["F00", "FFF", "000"],
                ["FAA", "FAA", "FAA"],
@@ -25,10 +26,15 @@ const ACTORS = [
                ["55F", "---", "55F"]],
       logic: LOGIC.PLAYABLE
     }, {
-      name: 'turtle',
-      width: 2,
-      height: 2,
-      logic: LOGIC.WALKING
+      name: 'ladder',
+      width: 3,
+      height: 4,
+      climbable: true,
+      sprite: [["F99", "F99", "F99"],
+               ["F99", "---", "F99"],
+               ["F99", "F99", "F99"],
+               ["F99", "---", "F99"]],
+      logic: LOGIC.STATIC
     }, 
     {
       name: 'brickBlock',
@@ -37,27 +43,46 @@ const ACTORS = [
       sprite: [["F55", "F55", "F55"],
                ["F55", "F55", "F55"],
                ["F55", "F55", "F55"]],
+      climbable: false,
       logic: LOGIC.STATIC
     }];
 
 const LEVEL1 = [{
   actor: ACTORS[2],
-    posX: 6,
-    posY: 46,
-    facing: DIRECTIONS.right,
-    fall: 0
+  posX: 6,
+  posY: 46,
+  facing: DIRECTIONS.right,
+  fall: 0
 }, {
   actor: ACTORS[2],
-    posX: 10,
-    posY: 38,
-    facing: DIRECTIONS.right,
-    fall: 0
+  posX: 10,
+  posY: 38,
+  facing: DIRECTIONS.right,
+  fall: 0
 }, {
   actor: ACTORS[2],
-    posX: 16,
-    posY: 35,
-    facing: DIRECTIONS.right,
-    fall: 0
+  posX: 16,
+  posY: 35,
+  facing: DIRECTIONS.right,
+  fall: 0
+}, {
+  actor: ACTORS[2],
+  posX: 24,
+  posY: 20,
+  facing: DIRECTIONS.right,
+  fall: 0
+}, {
+  actor: ACTORS[1],
+  posX: 21,
+  posY: 20,
+  facing: DIRECTIONS.right,
+  fall: 0
+}, {
+  actor: ACTORS[1],
+  posX: 21,
+  posY: 24,
+  facing: DIRECTIONS.right,
+  fall: 0
 }]
 
 let intervalId;
@@ -78,13 +103,13 @@ let loadGameData = function(width, height) {
   let actionXPlayer = 0;
   let actionYPlayer = 0;
   let moduleArr = [];
-  let objectsArr = [{
+  let objectsArr = LEVEL1.concat([{
     actor: ACTORS[0],
     posX: 6,
     posY: 6,
     facing: DIRECTIONS.right,
     fall: 0
-  }].concat(LEVEL1);
+  }]);
 
   // DOM-data
   let elementGame = document.querySelectorAll("div")[1];
@@ -106,23 +131,39 @@ let loadGameData = function(width, height) {
   // Refresh frame every second
   let updateLogic = function() {
       let checkStuck = function(x, y, object) {
-        return x <= object.posX + object.actor.width &&
-             y <= object.posY + object.actor.height &&
-             x >= object.posX && y >= object.posY;
+        return x < object.posX + object.actor.width &&
+             y < object.posY + object.actor.height &&
+             x > object.posX && y >= object.posY;
+      }
+
+      let checkCollisionHorizontal = function(x1, x2, y1, y2, direction, objectIndex) {
+        for(let j = 0; j < objectsArr.length; j++) {
+          if(j == objectIndex) continue;
+          if(checkStuck(x1+direction, y1, objectsArr[j]) ||
+            checkStuck(x1+direction, y2, objectsArr[j]) ||
+            checkStuck(x2+direction, y1, objectsArr[j]) ||
+            checkStuck(x2+direction, y2, objectsArr[j]))
+            return true && !objectsArr[j].actor.climbable;
+        }
+        return false;
       }
 
       let checkCollision = function(x1, x2, y1, y2, desiredFall, objectIndex) {
-        for(let z = 0; z < desiredFall; z++) {
+        for(let z = 0-(desiredFall<0); (z < desiredFall && desiredFall >= 0) ||
+        (z > desiredFall && desiredFall < 0); z += desiredFall > 0 ? 1 : -1) {
           for(let i = 0; i < objectsArr.length; i++) {
             if(i == objectIndex) continue;
-            if(checkStuck(x1+1, y1+z, objectsArr[i]))
+            if(checkStuck(x1, y1+z, objectsArr[i]) ||
+               checkStuck(x1, y2+z, objectsArr[i]) || 
+               checkStuck(x2, y1+z, objectsArr[i]) ||
+               checkStuck(x2, y2+z, objectsArr[i])) {
+              if(desiredFall < 0) return 0;
               return z;
-            if(checkStuck(x1+1, y2+z, objectsArr[i]))
-              return z;
-            if(checkStuck(x2-1, y1+z, objectsArr[i]))
-              return z;
-            if(checkStuck(x2-1, y2+z, objectsArr[i]))
-              return z;
+            }
+            if(objectsArr[i].posX == x1 && 
+              objectsArr[i].posX+objectsArr[i].actor.width == x2 &&
+              y1+z+1 < objectsArr[i].posY + objectsArr[i].actor.height
+              && y2+z>= objectsArr[i].posY) return z+4*(desiredFall<0 && !objectsArr[i].actor.climbable);
           }
         }
         return desiredFall;
@@ -155,39 +196,39 @@ let loadGameData = function(width, height) {
               objectsArr[i].fall = -4;
             }
             if(actionXPlayer == 1) {
-              let movingAllowed = true;
-              for(let iY = 0; iY < objectsArr[i].actor.height; iY++) {
-                if(checkCollision(rightX, iY)) {
-                  movingAllowed = false;
-                }
-              }
+              let movingAllowed = !checkCollisionHorizontal(objectsArr[i].posX,
+                            objectsArr[i].posX+objectsArr[i].actor.width,
+                            objectsArr[i].posY + 1,
+                            objectsArr[i].posY+objectsArr[i].actor.height-1,
+                            actionXPlayer, i) && objectsArr[i].posX > 0 
+                            && objectsArr[i].posX+objectsArr[i].actor.width < width;
               if(movingAllowed) {
                 objectsArr[i].posX++;
               }
             }
             if(actionXPlayer == -1) {
-              let movingAllowed = true;
-              for(let iY = 0; iY < objectsArr[i].actor.height; iY++) {
-                if(checkCollision(rightX, iY)) {
-                  movingAllowed = false;
-                  break;
-                }
-              }
+              let movingAllowed = !checkCollisionHorizontal(objectsArr[i].posX,
+                            objectsArr[i].posX+objectsArr[i].actor.width,
+                            objectsArr[i].posY + 1,
+                            objectsArr[i].posY+objectsArr[i].actor.height-1,
+                            actionXPlayer, i) && objectsArr[i].posX > 0 
+                            && objectsArr[i].posX+objectsArr[i].actor.width < width;
               if(movingAllowed) {
                 objectsArr[i].posX--;
               }
             }
           }
-          //CHECKING COLLISION AT BOTTOM
           if(fallLeft < 1) objectsArr[i].fall = Math.min(0, objectsArr[i].fall);
           else {
+            
+            //CHECKING COLLISION AT BOTTOM
             objectsArr[i].fall = Math.min(objectsArr[i].fall, fallLeft);
             allowedFall = checkCollision(objectsArr[i].posX,
                               objectsArr[i].posX+objectsArr[i].actor.width,
                               objectsArr[i].posY,
                               objectsArr[i].posY+objectsArr[i].actor.height,
                               objectsArr[i].fall, i);
-            if(allowedFall < objectsArr[i].fall) {
+            if(objectsArr[i].fall < 0 || allowedFall < objectsArr[i].fall) {
               objectsArr[i].fall = allowedFall;
             }
           }
